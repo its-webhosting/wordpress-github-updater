@@ -21,6 +21,9 @@
         "php": ">=7.4",
         "composer/semver": "^3.4"
     },
+    "autoload": {
+        "files": ["github-updater.php"]
+    },
     "minimum-stability": "stable",
     "prefer-stable": true
 }
