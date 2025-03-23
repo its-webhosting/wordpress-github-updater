@@ -19,6 +19,7 @@
     },
     "require": {
         "php": ">=7.4",
+        "ext-json": "*",
         "composer/semver": "^3.4"
     },
     "autoload": {

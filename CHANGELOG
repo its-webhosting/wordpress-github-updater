@@ -1,3 +1,9 @@
+1.1.0 (TBR)
+===========
+Allow plugin or site owner to upgrade to prereleases
+Support paginatinon with GitHub API calls
+Support autoloading
+
 1.0.2 (2024-09-23)
 ==================
 Allow the "Check again." force-check to bypass cache.
