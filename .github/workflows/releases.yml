@@ -11,10 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: "actions/checkout@master"
+        uses: actions/checkout@v4
         id: checkout
-        with:
-          ref: "support-prereleases"
 
       - name: Get Tag
         id: tag
@@ -27,13 +25,13 @@ jobs:
           version: ${{ steps.tag.outputs.tag }}
 
       - name: Install PHP
-        uses: "shivammathur/setup-php@v2"
+        uses: shivammathur/setup-php@v2
         id: php
         with:
-          php-version: "latest"
+          php-version: latest
 
       - name: Install Composer
-        uses: "ramsey/composer-install@v3"
+        uses: ramsey/composer-install@v3
         id: composer
 
       - name: Install Dependencies
