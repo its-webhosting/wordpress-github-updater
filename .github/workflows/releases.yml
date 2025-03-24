@@ -43,7 +43,7 @@ jobs:
       - name: Build Project
         id: build
         run: |
-          git archive -o /tmp/${{ github.event.repository.name }}-${{ steps.tag.outputs.tag }}.zip --prefix=${{ github.event.repository.name }}/ ${{ steps.tag.outputs.tag }}
+          git archive -o /tmp/${{ github.event.repository.name }}-${{ steps.tag.outputs.tag }}.zip --prefix=${{ github.event.repository.name }}/ v${{ steps.tag.outputs.tag }}
           mkdir /tmp/${{ github.event.repository.name }}
           cp -R vendor /tmp/${{ github.event.repository.name }}/
           cd /tmp
