@@ -16,7 +16,7 @@ jobs:
 
       - name: Get Version
         id: get_version
-        run: echo -n "${GITHUB_REF}" | sed -E 's/^ref\/tags\/v?/version=/' >> $GITHUB_OUTPUT
+        run: echo "${GITHUB_REF}" | sed -E 's%^refs/tags/v?%version=%' >> $GITHUB_OUTPUT
 
       - name: Parse Version
         uses: madhead/semver-utils@v4
