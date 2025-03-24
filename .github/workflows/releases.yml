@@ -55,5 +55,5 @@ jobs:
         with:
           files: /tmp/${{ github.event.repository.name }}-${{ steps.tag.outputs.tag }}.zip
           draft: true
-          prerelease: ${{ steps.version.outputs.prerelease != '' }
+          prerelease: ${{ steps.version.outputs.prerelease != '' }}
 
