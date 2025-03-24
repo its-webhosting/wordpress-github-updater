@@ -6,6 +6,10 @@ on:
     tags:
       - "*.*.*"
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -14,15 +18,19 @@ jobs:
         uses: actions/checkout@v4
         id: checkout
 
-      - name: Get Tag
-        id: tag
-        run: shopt -s extglob ; echo "tag=${GITHUB_REF##ref/tags/?(v)}" >> $GITHUB_OUTPUT
+      - name: Get Version
+        id: get_version
+        run: shopt -s extglob && shopt -p && echo "version=${GITHUB_REF##ref/tags/?(v)}" >> $GITHUB_OUTPUT && cat $GITHUB_OUTPUT
 
       - name: Parse Version
         uses: madhead/semver-utils@latest
-        id: version
+        id: parse_version
         with:
-          version: ${{ steps.tag.outputs.tag }}
+          version: ${{ steps.get_version.outputs.version }}
+
+      - name: Debug
+        id: debug
+        run: echo "${{ steps.parse_version.outputs }}"
 
       - name: Create Release
         id: create_release
