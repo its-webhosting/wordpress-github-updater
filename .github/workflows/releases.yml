@@ -24,10 +24,6 @@ jobs:
         with:
           version: ${{ steps.get_version.outputs.version }}
 
-      - name: Debug
-        id: debug
-        run: echo "${{ toJson(steps.parse_version.outputs) }}"
-
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v2
