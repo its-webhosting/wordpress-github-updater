@@ -16,7 +16,7 @@ jobs:
 
       - name: Get Tag
         id: tag
-        run: echo "tag=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: shopt -s extglob ; echo "tag=${GITHUB_REF##ref/tags/?(v)}" >> $GITHUB_OUTPUT
 
       - name: Parse Version
         uses: madhead/semver-utils@latest
@@ -24,34 +24,10 @@ jobs:
         with:
           version: ${{ steps.tag.outputs.tag }}
 
-      - name: Install PHP
-        uses: shivammathur/setup-php@v2
-        id: php
-        with:
-          php-version: latest
-
-      - name: Install Composer
-        uses: ramsey/composer-install@v3
-        id: composer
-
-      - name: Install Dependencies
-        id: deps
-        run: composer install --no-dev --no-scripts --quiet --no-ansi --no-interaction --no-suggest --no-progress
-
-      - name: Build Project
-        id: build
-        run: |
-          git archive -o /tmp/${{ github.event.repository.name }}-${{ steps.tag.outputs.tag }}.zip --prefix=${{ github.event.repository.name }}/ v${{ steps.tag.outputs.tag }}
-          mkdir /tmp/${{ github.event.repository.name }}
-          cp -R vendor /tmp/${{ github.event.repository.name }}/
-          cd /tmp
-          zip -r ${{ github.event.repository.name }}-${{ steps.tag.outputs.tag }}.zip ${{ github.event.repository.name }}/vendor
-
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          files: /tmp/${{ github.event.repository.name }}-${{ steps.tag.outputs.tag }}.zip
           draft: true
           prerelease: ${{ steps.version.outputs.prerelease != '' }}
 
