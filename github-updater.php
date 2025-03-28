@@ -283,13 +283,14 @@ namespace Umich\GithubUpdater\v1d1d0_alpha1 {
 
                 $data = false;
 
-                if( $key ) {
+                if( $key && ! isset( $_GET['force-check'] ) ) {
                     $data = get_site_transient( $this->_getTransientKey( $key ) );
                 }
 
-                if( !$data || isset( $_GET['force-check'] ) ) {
+                if( !$data ) {
                     $url = rtrim( "{$this->_githubBase['api']}{$this->_options['repo']}/{$endpoint}", '/' );
                     //$url .= '?per_page=2';  // uncomment for testing
+		    $data = [];
                     $pagesRemaining = true;
                     while ( $pagesRemaining ) {
                         $res = wp_remote_request( $url, $params );
@@ -313,12 +314,9 @@ namespace Umich\GithubUpdater\v1d1d0_alpha1 {
                         }
 
                         $d = json_decode( $res['body'] );
-                        $d = $this->_parseApiData( $d );
-                        if ( ! $data ) {
-                            $data = $d;
-                        } else {
-                            $data = array_merge( $data, $d );
-                        }
+			if ( ! $d ) { $d = []; }
+			if ( ! is_array( $d ) ) { $d = [ $d ]; }
+			$data = array_merge( $data, $d );
                     }
 
                     if( $key ) {
@@ -332,21 +330,8 @@ namespace Umich\GithubUpdater\v1d1d0_alpha1 {
                     }
                 }
 
+		if ( count( $data ) === 1 ) { return $data[0]; }
                 return $data;
-            }
-
-            private function _parseApiData( $data ) {
-                // from https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api?apiVersion=2022-11-28#example-creating-a-pagination-method
-                if ( is_array( $data ) && array_is_list( $data ) ) {
-                    return $data;
-                }
-                if ( ! $data ) {
-                    return [];
-                }
-                unset( $data['incomplete_results'] );
-                unset( $data['repository_selection'] );
-                unset( $data['total_count'] );
-                return $data[ array_key_first( $data ) ];
             }
 
             private function _searchAllReleases()
