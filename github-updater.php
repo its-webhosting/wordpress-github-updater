@@ -3,7 +3,7 @@
 /**
  * Name: U-M: Wordpress Github Updater Library
  * Description: Provides simple method to distribute releases using github rather than wordpress plugin repo.
- * Version: 1.1.0-alpha1
+ * Version: 1.1.0-alpha2
  * Project URI: https://github.com/umdigital/wordpress-github-updater
  * Author: U-M: OVPC Digital
  * Author URI: https://vpcomm.umich.edu
@@ -13,22 +13,10 @@ namespace Umich\GithubUpdater {
 
     use Composer\Semver\Comparator;
 
-    if( !class_exists( '\Umich\GithubUpdater\MatchReleases' ) ) {
-        class MatchReleases {
-	    // These are set by the Init class load() function, below.  They can be used by plugins
-	    // for easy setting of the match_releases option.
-	    public static $latest       = null;
-	    public static $includeRC    = null;
-	    public static $includeBeta  = null;
-	    public static $includeAlpha = null;
-	    public static $includeAll   = null;
-        }
-    }
-
     if( !class_exists( '\Umich\GithubUpdater\Init' ) ) {
         class Init
         {
-            static private $_version = '1.1.0-alpha1';
+            static private $_version = '0';
 
             public function __construct( $options = array() )
             {
@@ -40,13 +28,6 @@ namespace Umich\GithubUpdater {
             {
                 if( Comparator::greaterThanOrEqualTo( $version, self::$_version ) ) {
                     self::$_version = $version;
-                    $newClass = '\Umich\GithubUpdater\v'. strtr( self::$_version, '.-+', 'd_P' ) .'\MatchReleases';
-                    $n = new $newClass;
-                    \Umich\GithubUpdater\MatchReleases::$latest       = $n::$latest;
-                    \Umich\GithubUpdater\MatchReleases::$includeRC    = $n::$includeRC;
-                    \Umich\GithubUpdater\MatchReleases::$includeBeta  = $n::$includeBeta;
-                    \Umich\GithubUpdater\MatchReleases::$includeAlpha = $n::$includeAlpha;
-                    \Umich\GithubUpdater\MatchReleases::$includeAll   = $n::$includeAll;
                 }
             }
         }
@@ -54,22 +35,14 @@ namespace Umich\GithubUpdater {
 }
 
 
-namespace Umich\GithubUpdater\v1d1d0_alpha1 {
+namespace Umich\GithubUpdater\v1d1d0_alpha2 {
 
     use Composer\Semver\Comparator;
 
-    class MatchReleases {
-        public static $latest       = '';
-        public static $includeRC    = '/^v[0-9.]+(-rc)?/i';
-        public static $includeBeta  = '/^v[0-9.]+(-(beta|rc))?/i';
-        public static $includeAlpha = '/^v[0-9.]+(-(alpha|beta|rc))?/i';
-        public static $includeAll   = '/^v[0-9.]+/i';
-    }
-
-    if( !class_exists( '\Umich\GithubUpdater\v1d1d0_alpha1\Actions' ) ) {
+    if( !class_exists( '\Umich\GithubUpdater\v1d1d0_alpha2\Actions' ) ) {
         class Actions
         {
-            CONST VERSION = '1.1.0-alpha1';
+            CONST VERSION = '1.1.0alpha2'; // make this SemVer (1.1.0-alpha2) once no more 1.0.x is deployed (in 2027?)
 
             private $_githubBase = [
                 'main' => 'https://github.com/',
@@ -79,7 +52,7 @@ namespace Umich\GithubUpdater\v1d1d0_alpha1 {
 
             private $_requiredOptions = [
                 'repo',
-                'slug'
+                'slug',
             ];
 
             private $_options = [
@@ -124,8 +97,8 @@ namespace Umich\GithubUpdater\v1d1d0_alpha1 {
                 }
 
                 // maybe override match_releases (if set by administrator)
-                $override = get_option( 'github-updater-override-' . $this->_options['slug'], '' );
-                if ( $override ) {
+                $override = get_option( 'github-updater-override-' . $this->_options['slug'], 'not_set' );
+                if ( is_string( $override ) && $override !== 'not_set' ) {
                     $this->_options['match_releases'] = $override;
                 }
 
@@ -135,11 +108,13 @@ namespace Umich\GithubUpdater\v1d1d0_alpha1 {
                     error_log('Checking for updates to ' . $pluginFile);
                     if( $pluginFile == $this->_options['slug'] ) {
                         // get latest release
-                        if ( empty( $this->_options['match_releases'] ) ) {
+                        if ( empty( $this->_options['match_releases'] )
+                             || $this->_options['match_releases'] != 'stable' ) {
                             $release = $this->_callAPI( 'releases/latest', 'gh_release_latest' );
                             error_log('Latest release: ' . $release->tag_name);
                         } else {
-                            $release = $this->_searchAllReleases();
+                            $pluginData = get_plugin_data( WP_PLUGIN_DIR .'/'. $this->_options['slug'] );
+                            $release = $this->_searchAllReleases( $pluginData );
                             error_log('Matched release: ' . $release->tag_name);
                         }
 
@@ -169,13 +144,14 @@ namespace Umich\GithubUpdater\v1d1d0_alpha1 {
                         return $return;
                     }
 
-                    if ( empty( $this->_options['match_releases'] ) ) {
+	                $pluginData = get_plugin_data( WP_PLUGIN_DIR .'/'. $this->_options['slug'] );
+
+	                if ( empty( $this->_options['match_releases'] )
+                         || $this->_options['match_releases'] != 'stable' ) {
                         $release = $this->_callAPI( 'releases/latest', 'gh_release_latest' );
                     } else {
-                        $release = $this->_searchAllReleases();
+                        $release = $this->_searchAllReleases( $pluginData );
                     }
-
-                    $pluginData = get_plugin_data( WP_PLUGIN_DIR .'/'. $this->_options['slug'] );
 
                     if( $release && $pluginData ) {
                         if( ($wpConfig = $this->_getRaw( $this->_options['config'], $release->tag_name )) !== false ) {
@@ -290,7 +266,7 @@ namespace Umich\GithubUpdater\v1d1d0_alpha1 {
                 if( !$data ) {
                     $url = rtrim( "{$this->_githubBase['api']}{$this->_options['repo']}/{$endpoint}", '/' );
                     //$url .= '?per_page=2';  // uncomment for testing
-		    $data = [];
+	                $data = [];
                     $pagesRemaining = true;
                     while ( $pagesRemaining ) {
                         $res = wp_remote_request( $url, $params );
@@ -314,9 +290,9 @@ namespace Umich\GithubUpdater\v1d1d0_alpha1 {
                         }
 
                         $d = json_decode( $res['body'] );
-			if ( ! $d ) { $d = []; }
-			if ( ! is_array( $d ) ) { $d = [ $d ]; }
-			$data = array_merge( $data, $d );
+                        if ( ! $d ) { $d = []; }
+                        if ( ! is_array( $d ) ) { $d = [ $d ]; }
+                        $data = array_merge( $data, $d );
                     }
 
                     if( $key ) {
@@ -329,19 +305,82 @@ namespace Umich\GithubUpdater\v1d1d0_alpha1 {
                         $this->_data[ $key ] = $data;
                     }
                 }
-
-		if ( count( $data ) === 1 ) { return $data[0]; }
+                if ( count( $data ) === 1 ) { return $data[0]; }
                 return $data;
             }
 
-            private function _searchAllReleases()
+            private function _searchAllReleases( $pluginData )
             {
+                $matchReleases = ! empty( $this->_options['match_releases'] )
+                    ? $this->_options['match_releases'] : 'stable';
+
+                // handle match_releases keywords
+                $pinMajor = false;
+                $matchType = 'regex';
+                $keywords = explode( ',', $matchReleases );
+                foreach ( $keywords as $kw ) {
+                    $kw = trim( $kw );
+                    switch ( $kw ) {
+                        case 'pinMajor':
+                            $pinMajor = true;
+                            if ( $matchType == 'regex' ) {
+                                $matchType = 'stable';
+                            }
+                            break;
+                        case 'stable':
+                            $matchType = 'stable';
+                            break;
+                        case 'includeRC':
+                            $matchType = 'includeRC';
+                            break;
+                        case 'includeBeta':
+                            $matchType = 'includeBeta';
+                            break;
+                        case 'includeAlpha':
+                            $matchType = 'includeAlpha';
+                            break;
+                        case 'includeAll':
+                            $matchType = 'includeAll';
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                if ( $matchType != 'regex' ) {
+                    $re_prefix = '/^v?';
+                    if ( $pinMajor ) {
+                        if ( ! $pluginData || ! isset( $pluginData[ 'Version' ] ) ) {
+                            error_log( "wordpress-github-updater: No plugin version found to use with pinMajor" );
+                            return null;
+                        }
+                        if ( ! preg_match( '/^\s*v\s*([0-9]+)\./i', $pluginData[ 'Version' ], $majorVersion ) ) {
+                            error_log( "wordpress-github-updater: Unable to determine major version for pinMajor" );
+                            return null;
+                        }
+                        $re_prefix = '/^v?' . $majorVersion[1] . '\.';
+                    }
+
+                    $matchRegexes = [
+                        'stable'       => '[0-9.]+\+?/i',
+                        'includeRC'    => '[0-9.]+(-rc)?/i',
+                        'includeBeta'  => '[0-9.]+(-(beta|rc))?/i',
+                        'includeAlpha' => '[0-9.]+(-(alpha|beta|rc))?/i',
+                        'includeAll'   => '[0-9.]+/i',
+                    ];
+                    if ( ! isset( $matchRegexes[ $matchType ] ) ) {
+                        error_log( "wordpress-github-updater: Invalid match_releases value: {$matchType}" );
+                        return null;
+                    }
+                    $matchReleases = $re_prefix . $matchRegexes[ $matchType ];
+                }
+                error_log( "final match_releases: {$matchReleases}" );
+
                 $release = null;
                 $releases = $this->_callAPI( 'releases', 'gh_all_releases' );
-                error_log( "match_releases: {$this->_options['match_releases']}" );
                 foreach( $releases as $r ) {
                     error_log( "Checking release {$r->name} ({$r->tag_name})" );
-                    if( preg_match( $this->_options['match_releases'], $r->tag_name ) ) {
+                    if( preg_match( $matchReleases, $r->tag_name ) ) {
                         error_log( "Matched a release {$r->name} ({$r->tag_name})" );
                         if ( ! $release || Comparator::greaterThan( $r->tag_name, $release->tag_name ) ) {
                             error_log( "Set release {$r->name} ({$r->tag_name})" );
@@ -396,5 +435,16 @@ namespace Umich\GithubUpdater\v1d1d0_alpha1 {
         }
 
         \Umich\GithubUpdater\Init::load( Actions::VERSION );
+    }
+}
+
+// For compatibility with Init::Load from version 1.0.x.
+// Remove this once all sites are using version 1.1.x or later (in 2027?).
+namespace Umich\GithubUpdater\v1d1d0alpha2 {
+    if ( ! class_exists( '\Umich\GithubUpdater\v1d1d0alpha2\Actions' ) ) {
+        class_alias(
+            '\Umich\GithubUpdater\v1d1d0_alpha2\Actions',
+            '\Umich\GithubUpdater\v1d1d0alpha2\Actions'
+        );
     }
 }

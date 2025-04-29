@@ -54,44 +54,51 @@ For best support it is recommended to add a release workflow that will automatic
 
 ### `match_releases` Values
 
-`match_releases` defaults to an empty string, which causes the plugin to consider only the latest regular/published release (the one at `${REPO_URL}/releases/latest`) for upgrading.
+`match_releases` defaults to an empty string, which causes the plugin to consider only the latest published, stable release (the one at `${REPO_URL}/releases/latest`) for upgrading.
 
-If `match_releases` is a non-empty string, it will be used as a regular expression and the release with the _highest [SemVer version number](https://semver.org/)_ (not latest date!) that matches the regex will be compared against the current version of the plugin to determine if an upgrade is available for the plugin.
+`match_releases` can be a comma separated list of case-sensitive keywords in the table below, with the latter keywords overriding earlier ones:
 
-PHP namespace `\Umich\GithubUpdater` has several variables that can be used for setting `match_releases`:
+| Name           | Description                                                 |
+|----------------|-------------------------------------------------------------|
+| `stable`       | Upgrade only to published, stable releases                  |
+| `includeRC`    | Published release candidates (`-rc1`, ...) and stable releases |
+| `includeBeta`  | Published beta releases, RCs, and stable releases           |
+| `includeAlpha` | Published alphas, betas, RCs, and full releases             |
+| `includeAll`   | Upgrade to the published release with the largest version number, regardless of type |
+| `pinMajor`     | Stay on the major version of the currently installed plugin |
 
-| Name                           | Description                                            |
-| ------------------------------ | ------------------------------------------------------ |
-| `MatchReleases::$latest`       | Upgrade only to full (normal) releases                 |
-| `MatchReleases::$includeRC`    | Release candidates (`-rc1`, ...) and full releases     |
-| `MatchReleases::$includeBeta`  | Beta releases, RCs, and full releases                  |
-| `MatchReleases::$includeAlpha` | Alphas, betas, RCs, and full releases                  |
-| `MatchReleases::$includeAll`   | Upgrade to the release with the largest version number |
+Otherwise, `match_releases` will be used as a regular expression and the published release with the _highest [SemVer version number](https://semver.org/)_ (not latest date!) that matches the regex will be compared against the current version of the plugin to determine if an upgrade is available for the plugin.
 
-For example, to upgrade the plugin to beta and regular releases that have higher version numbers than what is currently installed:
+
+For example, to upgrade the plugin to beta, rc, and stable releases that have higher version numbers than what is currently installed:
 ```php
 new \Umich\GithubUpdater\Init([
     'repo'           => 'its-cloudflare/umich-cloudflare',
     'slug'           => plugin_basename( __FILE__ ),
-    'match_releases' => \Umich\GithubUpdater\MatchReleases::$includeBeta,
+    'match_releases' => 'includeBeta',
 ]);
 ```
 
-Upgrade to any normal, RC, or beta release in the 3.x series, but don't upgrade to higher major version numbers:
+Upgrade to any stable, RC, or beta release in the 3.x series, but don't upgrade to higher major version numbers:
 ```php
 new \Umich\GithubUpdater\Init([
     'repo'           => 'its-cloudflare/umich-cloudflare',
     'slug'           => plugin_basename( __FILE__ ),
     'match_releases' => '/^v3\.[0-9.]+(-(beta|rc))?/i',
 ```
+If the plugin major version is already 3.x, an easier way to do the same thing is to use the value `includeBeta,pinMajor`
 
 The plugin may choose to have a setting to allow administrators to select which types of upgrades they want to opt into.  For an example UI, see the [WordPress GitHub Updater Demo](https://github.com/its-webhosting/wordpress-github-updater-demo) plugin.
 
-WordPress administrators can also override the value `match_releases` provided by the plugin author through `\Umich\GithubUpdater\Init()` by running
+WordPress administrators can also override the value `match_releases` provided by the plugin author by running
 ```bash
-wp option set github-updater-override-${plugin_slug} '${upgrade_regex}'
+wp option set github-updater-override-${plugin_slug} '${value}'
 ```
-For example, to lock the `umich-cloudflare` plugin to only full/regular 1.x releases:
+For example, to lock the `umich-cloudflare` plugin to only stable 1.x releases:
+```bash
+wp option set github-updater-override-umich-cloudflare 'stable,pinMajor'
+```
+or, if you prefer to use a regular expression:
 ```bash
 wp option set github-updater-override-umich-cloudflare '/^v1\.[0-9.]+[^-]*(+.*)?$/i'
 ```
