@@ -3,7 +3,7 @@
 /**
  * Name: U-M: Wordpress Github Updater Library
  * Description: Provides simple method to distribute releases using github rather than wordpress plugin repo.
- * Version: 1.1.0-alpha2
+ * Version: 1.1.0
  * Project URI: https://github.com/umdigital/wordpress-github-updater
  * Author: U-M: OVPC Digital
  * Author URI: https://vpcomm.umich.edu
@@ -35,14 +35,14 @@ namespace Umich\GithubUpdater {
 }
 
 
-namespace Umich\GithubUpdater\v1d1d0_alpha2 {
+namespace Umich\GithubUpdater\v1d1d0 {
 
     use Composer\Semver\Comparator;
 
-    if( !class_exists( '\Umich\GithubUpdater\v1d1d0_alpha2\Actions' ) ) {
+    if( !class_exists( '\Umich\GithubUpdater\v1d1d0\Actions' ) ) {
         class Actions
         {
-            CONST VERSION = '1.1.0alpha2'; // make this SemVer (1.1.0-alpha2) once no more 1.0.x is deployed (in 2027?)
+            CONST VERSION = '1.1.0';
 
             private $_githubBase = [
                 'main' => 'https://github.com/',
@@ -430,16 +430,5 @@ namespace Umich\GithubUpdater\v1d1d0_alpha2 {
         }
 
         \Umich\GithubUpdater\Init::load( Actions::VERSION );
-    }
-}
-
-// For compatibility with Init::Load from version 1.0.x.
-// Remove this once all sites are using version 1.1.x or later (in 2027?).
-namespace Umich\GithubUpdater\v1d1d0alpha2 {
-    if ( ! class_exists( '\Umich\GithubUpdater\v1d1d0alpha2\Actions' ) ) {
-        class_alias(
-            '\Umich\GithubUpdater\v1d1d0_alpha2\Actions',
-            '\Umich\GithubUpdater\v1d1d0alpha2\Actions'
-        );
     }
 }
