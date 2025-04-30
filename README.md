@@ -102,3 +102,12 @@ or, if you prefer to use a regular expression:
 ```bash
 wp option set github-updater-override-umich-cloudflare '/^v1\.[0-9.]+[^-]*(+.*)?$/i'
 ```
+
+## Roadmap
+
+* Allow downgrading to a previous version of a plugin:
+    * Save the previously installed version in the options and add a UI button for a two-click undo of an upgrade (first click on the button, second click to confirm the reversion).
+    * Allow picking and moving to any available-and-compatible version from a dropdown list of all plugin releases (check WordPress and PHP version requirements).
+    * Add WP CLI commands for these.
+* Add PSR-4 compatibility and get rid of the `.autoload.files` hack.  This will probably be a breaking change for a 2.0 release.
+
