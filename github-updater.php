@@ -105,17 +105,14 @@ namespace Umich\GithubUpdater\v1d1d0_alpha2 {
                 /** WORDPRESS HOOKS **/
                 // Update Check
                 add_filter( 'update_plugins_github.com', function( $update, $pluginData, $pluginFile ){
-                    error_log('Checking for updates to ' . $pluginFile);
                     if( $pluginFile == $this->_options['slug'] ) {
                         // get latest release
                         if ( empty( $this->_options['match_releases'] )
                              || $this->_options['match_releases'] != 'stable' ) {
                             $release = $this->_callAPI( 'releases/latest', 'gh_release_latest' );
-                            error_log('Latest release: ' . $release->tag_name);
                         } else {
                             $pluginData = get_plugin_data( WP_PLUGIN_DIR .'/'. $this->_options['slug'] );
                             $release = $this->_searchAllReleases( $pluginData );
-                            error_log('Matched release: ' . $release->tag_name);
                         }
 
                         if( $release ) {
@@ -272,11 +269,13 @@ namespace Umich\GithubUpdater\v1d1d0_alpha2 {
                         $res = wp_remote_request( $url, $params );
 
                         if( is_wp_error( $res ) ) {
-                            error_log( 'Error calling API: ' . $res->get_error_message() );
+                            error_log( "wordpress-github-updater: {$this->_options['slug']}: Error calling API: "
+                                       . $res->get_error_message() );
                             return false;
                         }
                         if ( $res['response']['code'] != 200 ) {
-                            error_log( 'Error calling API: response code ' . $res['response']['code'] );
+                            error_log( "wordpress-github-updater: {$this->_options['slug']}: Error calling API: response code "
+                                       . $res['response']['code'] );
                             return false;
                         }
 
@@ -351,11 +350,11 @@ namespace Umich\GithubUpdater\v1d1d0_alpha2 {
                     $re_prefix = '/^v?';
                     if ( $pinMajor ) {
                         if ( ! $pluginData || ! isset( $pluginData[ 'Version' ] ) ) {
-                            error_log( "wordpress-github-updater: No plugin version found to use with pinMajor" );
+                            error_log( "wordpress-github-updater: {$this->_options['slug']}: No plugin version found to use with pinMajor" );
                             return null;
                         }
                         if ( ! preg_match( '/^\s*v\s*([0-9]+)\./i', $pluginData[ 'Version' ], $majorVersion ) ) {
-                            error_log( "wordpress-github-updater: Unable to determine major version for pinMajor" );
+                            error_log( "wordpress-github-updater: {$this->_options['slug']}: Unable to determine major version for pinMajor" );
                             return null;
                         }
                         $re_prefix = '/^v?' . $majorVersion[1] . '\.';
@@ -369,21 +368,17 @@ namespace Umich\GithubUpdater\v1d1d0_alpha2 {
                         'includeAll'   => '[0-9.]+/i',
                     ];
                     if ( ! isset( $matchRegexes[ $matchType ] ) ) {
-                        error_log( "wordpress-github-updater: Invalid match_releases value: {$matchType}" );
+                        error_log( "wordpress-github-updater: {$this->_options['slug']}: Invalid match_releases value: {$matchType}" );
                         return null;
                     }
                     $matchReleases = $re_prefix . $matchRegexes[ $matchType ];
                 }
-                error_log( "final match_releases: {$matchReleases}" );
 
                 $release = null;
                 $releases = $this->_callAPI( 'releases', 'gh_all_releases' );
                 foreach( $releases as $r ) {
-                    error_log( "Checking release {$r->name} ({$r->tag_name})" );
                     if( preg_match( $matchReleases, $r->tag_name ) ) {
-                        error_log( "Matched a release {$r->name} ({$r->tag_name})" );
                         if ( ! $release || Comparator::greaterThan( $r->tag_name, $release->tag_name ) ) {
-                            error_log( "Set release {$r->name} ({$r->tag_name})" );
                             $release = $r;
                         }
                     }
