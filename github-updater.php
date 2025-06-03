@@ -9,9 +9,29 @@
  * Author URI: https://vpcomm.umich.edu
  */
 
+
 namespace Umich\GithubUpdater {
 
-    use Composer\Semver\Comparator;
+    // Workaround to introduce autoloading without breaking version 1.0.x.
+    // Once we're sure no one is using versions <= 1.0.x anymore, uncomment the `use` statement below
+    // and delete the immediately follows it (`spl_autoload_call` and the entire `class Comparator` block).
+    // At the latest, this should be done with the release of version 2.0.
+
+    //use Composer\Semver\Comparator;
+    @spl_autoload_call('Composer\Semver\Comparator');
+    class Comparator
+    {
+        public static function greaterThanOrEqualTo( $version1, $version2 )
+        {
+            if( class_exists( 'Composer\Semver\Comparator' ) ) {
+                return \Composer\Semver\Comparator::greaterThanOrEqualTo( $version1, $version2 );
+            } else {
+                // Fallback implementation for wordpress-github-updater <= 1.0.x
+                return version_compare( $version1, $version2, '>=' );
+            }
+        }
+    } // end of workaround
+
 
     if( !class_exists( '\Umich\GithubUpdater\Init' ) ) {
         class Init
