@@ -28,6 +28,5 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          draft: true
           prerelease: ${{ steps.parse_version.outputs.prerelease != '' }}
 
