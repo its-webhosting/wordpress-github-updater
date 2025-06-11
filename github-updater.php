@@ -21,13 +21,13 @@ namespace Umich\GithubUpdater {
     @spl_autoload_call('Composer\Semver\Comparator');
     class Comparator
     {
-        public static function greaterThanOrEqualTo( $version1, $version2 )
+        public static function greaterThan( $version1, $version2 )
         {
             if( class_exists( 'Composer\Semver\Comparator' ) ) {
-                return \Composer\Semver\Comparator::greaterThanOrEqualTo( $version1, $version2 );
+                return \Composer\Semver\Comparator::greaterThan( $version1, $version2 );
             } else {
                 // Fallback implementation for wordpress-github-updater <= 1.0.x
-                return version_compare( $version1, $version2, '>=' );
+                return version_compare( $version1, $version2, '>' );
             }
         }
     } // end of workaround
@@ -46,7 +46,7 @@ namespace Umich\GithubUpdater {
 
             static public function load( $version )
             {
-                if( Comparator::greaterThanOrEqualTo( $version, self::$_version ) ) {
+                if( Comparator::greaterThan( $version, self::$_version ) ) {
                     self::$_version = $version;
                 }
             }
@@ -57,7 +57,7 @@ namespace Umich\GithubUpdater {
 
 namespace Umich\GithubUpdater\v1d1d0 {
 
-    use Composer\Semver\Comparator;
+    use Umich\GithubUpdater\Comparator;  // change to Composer\Semver\Comparator once the workaround is removed
 
     if( !class_exists( '\Umich\GithubUpdater\v1d1d0\Actions' ) ) {
         class Actions
@@ -128,7 +128,7 @@ namespace Umich\GithubUpdater\v1d1d0 {
                     if( $pluginFile == $this->_options['slug'] ) {
                         // get latest release
                         if ( empty( $this->_options['match_releases'] )
-                             || $this->_options['match_releases'] != 'stable' ) {
+                             || $this->_options['match_releases'] == 'stable' ) {
                             $release = $this->_callAPI( 'releases/latest', 'gh_release_latest' );
                         } else {
                             $pluginData = get_plugin_data( WP_PLUGIN_DIR .'/'. $this->_options['slug'] );
@@ -138,7 +138,7 @@ namespace Umich\GithubUpdater\v1d1d0 {
                         if( $release ) {
                             $update = [
                                 'slug'    => $this->_options['slug'],
-                                'version' => $release->tag_name,
+                                'version' => ltrim( $release->tag_name, 'vV' ),
                                 'url'     => $this->_githubBase['main'] . $this->_options['repo'] .'/releases/tag/'
                                              . $release->tag_name,
                                 'package' => $release->zipball_url
@@ -179,10 +179,11 @@ namespace Umich\GithubUpdater\v1d1d0 {
                             }
                         }
 
+                        $version = ltrim( $release->tag_name, 'vV' );
                         $return = (object) [
                             'slug'           => $args->slug,
                             'name'           => $pluginData['Name'],
-                            'version'        => $release->tag_name,
+                            'version'        => $version,
                             'requires'       => '',
                             'tested'         => '',
                             'requires_php'   => '',
@@ -209,7 +210,8 @@ namespace Umich\GithubUpdater\v1d1d0 {
                         ];
 
                         foreach( $release->assets as $asset ) {
-                            if( $asset->name == basename( $this->_options['repo'] ) ."-{$release->tag_name}.zip" ) {
+                            if( $asset->name == basename( $this->_options['repo'] ) ."-{$release->tag_name}.zip"
+                                || $asset->name == basename( $this->_options['repo'] ) ."-{$version}.zip" ) {
                                 $return->download_link = $asset->browser_download_url;
                             }
                         }
@@ -277,13 +279,13 @@ namespace Umich\GithubUpdater\v1d1d0 {
                 $data = false;
 
                 if( $key && ! isset( $_GET['force-check'] ) ) {
-                    $data = get_site_transient( $this->_getTransientKey( $key ) );
+                    $data = get_transient( $this->_getTransientKey( $key ) );
                 }
 
                 if( !$data ) {
                     $url = rtrim( "{$this->_githubBase['api']}{$this->_options['repo']}/{$endpoint}", '/' );
                     //$url .= '?per_page=2';  // uncomment for testing
-	                $data = [];
+	                $data = null;
                     $pagesRemaining = true;
                     while ( $pagesRemaining ) {
                         $res = wp_remote_request( $url, $params );
@@ -309,13 +311,16 @@ namespace Umich\GithubUpdater\v1d1d0 {
                         }
 
                         $d = json_decode( $res['body'] );
-                        if ( ! $d ) { $d = []; }
-                        if ( ! is_array( $d ) ) { $d = [ $d ]; }
-                        $data = array_merge( $data, $d );
+                        if ( is_null( $d ) ) {
+                            error_log( "wordpress-github-updater: {$this->_options['slug']}: Error decoding JSON response: "
+                                       . json_last_error_msg() );
+                            return false;
+                        }
+                        $data = is_null( $data ) ? $d : array_merge( (array) $data, $array( $d ) );
                     }
 
                     if( $key ) {
-                        set_site_transient(
+                        set_transient(
                             $this->_getTransientKey( $key ),
                             $data,
                             $this->_options['cache_timeout']
@@ -324,7 +329,6 @@ namespace Umich\GithubUpdater\v1d1d0 {
                         $this->_data[ $key ] = $data;
                     }
                 }
-                if ( count( $data ) === 1 ) { return $data[0]; }
                 return $data;
             }
 
@@ -394,11 +398,14 @@ namespace Umich\GithubUpdater\v1d1d0 {
                     $matchReleases = $re_prefix . $matchRegexes[ $matchType ];
                 }
 
-                $release = null;
+                $release  = null;
                 $releases = $this->_callAPI( 'releases', 'gh_all_releases' );
                 foreach( $releases as $r ) {
+                    $r = (object) $r;
                     if( preg_match( $matchReleases, $r->tag_name ) ) {
-                        if ( ! $release || Comparator::greaterThan( $r->tag_name, $release->tag_name ) ) {
+                        $best_match = $release ? ltrim( $release->tag_name, 'vV' ) : '';
+                        $this_match = ltrim( $r->tag_name, 'vV' );
+                        if ( ! $release || Comparator::greaterThan( $this_match, $best_match ) ) {
                             $release = $r;
                         }
                     }
