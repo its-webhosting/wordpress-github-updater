@@ -18,8 +18,8 @@ Update URI: https://github.com/GITHUB_ACCOUNT/GITHUB_REPO
 
 #### Initialize the library
 ```php
-// Omit this include if you're using an autoloader
-include 'vendor/umdigital/wordpress-github-updater/github-updater.php';
+// Uncomment this include if your plugin DOES NOT use an autoloader
+//include 'vendor/umdigital/wordpress-github-updater/github-updater.php';
 
 // Initialize Github Updater
 new \Umich\GithubUpdater\Init([
@@ -29,7 +29,7 @@ new \Umich\GithubUpdater\Init([
 ```
 
 #### Create / Update your build process
-For best support it is recommended to add a release workflow that will automatically package the plugin into a wordpress compatible zip file.  The default github source archives cause irregular plugin folder naming during install and updates.  There are some options of workflows in the examples directory. These workflows will create a release when a tag is pushed to the repo.  The one with composer in the name will also add composer dependencies to the package. This will create a release asset in the format of [REPO_NAME]-[TAG_NAME].zip.
+For best support it is recommended to add a release workflow that will automatically package the plugin into a wordpress compatible zip file.  The default github source archives cause irregular plugin folder naming during install and updates.  There are some options of workflows in the examples directory. These workflows will create a release when a tag is pushed to the repo.  The one with composer in the name will also add composer dependencies to the package. This will create a release asset in the format of `[REPO_NAME]-[TAG_NAME].zip`.
 
 ## Configuration
 ### Initialization Options
@@ -54,9 +54,9 @@ For best support it is recommended to add a release workflow that will automatic
 
 ### `match_releases` Values
 
-`match_releases` defaults to an empty string, which causes the plugin to consider only the latest published, stable release (the one at `${REPO_URL}/releases/latest`) for upgrading.
+`match_releases` defaults to an empty string, which causes the plugin to consider only the latest published, stable release for upgrading.  This is the same release that is available at `${REPO_URL}/releases/latest`
 
-`match_releases` can be a comma separated list of case-sensitive keywords in the table below, with the latter keywords overriding earlier ones:
+`match_releases` can be a comma separated list of case-sensitive keywords in the table below, with keywords occurring later in the list overriding earlier ones:
 
 | Name           | Description                                                 |
 |----------------|-------------------------------------------------------------|
@@ -69,8 +69,11 @@ For best support it is recommended to add a release workflow that will automatic
 
 Otherwise, `match_releases` will be used as a regular expression and the published release with the _highest [SemVer version number](https://semver.org/)_ (not latest date!) that matches the regex will be compared against the current version of the plugin to determine if an upgrade is available for the plugin.
 
+When comparing version numbers, the library ignores any leadiing `v` or `V` in the version number, so `v1.2.3` is considered the same version as `1.2.3`.
 
-For example, to upgrade the plugin to beta, rc, and stable releases that have higher version numbers than what is currently installed:
+### Examples
+
+* To upgrade the plugin to beta, rc, and stable releases that have higher version numbers than what is currently installed:
 ```php
 new \Umich\GithubUpdater\Init([
     'repo'           => 'its-cloudflare/umich-cloudflare',
@@ -79,18 +82,20 @@ new \Umich\GithubUpdater\Init([
 ]);
 ```
 
-Upgrade to any stable, RC, or beta release in the 3.x series, but don't upgrade to higher major version numbers:
+* To upgrade to any stable, RC, or beta release in the 3.x series, _without_ upgrading to new major releases (4.x and later):
 ```php
 new \Umich\GithubUpdater\Init([
     'repo'           => 'its-cloudflare/umich-cloudflare',
     'slug'           => plugin_basename( __FILE__ ),
     'match_releases' => '/^v3\.[0-9.]+(-(beta|rc))?/i',
 ```
-If the plugin major version is already 3.x, an easier way to do the same thing is to use the value `includeBeta,pinMajor`
+If the plugin major version is already 3.x, an easier way to do the same thing is to use the `match_releases` value `includeBeta,pinMajor`
 
 The plugin may choose to have a setting to allow administrators to select which types of upgrades they want to opt into.  For an example UI, see the [WordPress GitHub Updater Demo](https://github.com/its-webhosting/wordpress-github-updater-demo) plugin.
 
-WordPress administrators can also override the value `match_releases` provided by the plugin author by running
+### Overriding plugins that use the library
+
+WordPress administrators can also override the value `match_releases` provided by the plugin by running
 ```bash
 wp option set github-updater-override-${plugin_slug} '${value}'
 ```
@@ -109,5 +114,6 @@ wp option set github-updater-override-umich-cloudflare '/^v1\.[0-9.]+[^-]*(+.*)?
     * Save the previously installed version in the options and add a UI button for a two-click undo of an upgrade (first click on the button, second click to confirm the reversion).
     * Allow picking and moving to any available-and-compatible version from a dropdown list of all plugin releases (check WordPress and PHP version requirements).
     * Add WP CLI commands for these.
-* Add PSR-4 compatibility and get rid of the `.autoload.files` hack.  This will probably be a breaking change for a 2.0 release.
-
+* Add support for non-SemVer version numbers.
+* Add a setting to specify a fork of the `wordpress-github-updater-demo` plugin repo to check for updates instead of the plugin's official repo.
+* Add PSR-4 compatibility, get rid of the `.autoload.files` hack, and get rid off the fallback `Comparator` function.  This will probably be a breaking change for a 2.0 release.
