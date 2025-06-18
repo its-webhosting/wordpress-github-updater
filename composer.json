@@ -18,7 +18,7 @@
         "source": "https://github.com/umdigital/wordpress-github-updater"
     },
     "require": {
-        "php": ">=7.4",
+        "php": ">=7.3",
         "ext-json": "*",
         "composer/semver": "^3.4"
     },
