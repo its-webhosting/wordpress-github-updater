@@ -22,10 +22,12 @@ Update URI: https://github.com/GITHUB_ACCOUNT/GITHUB_REPO
 //include 'vendor/umdigital/wordpress-github-updater/github-updater.php';
 
 // Initialize Github Updater
-new \Umich\GithubUpdater\Init([
-    'repo' => 'its-cloudflare/umich-cloudflare',
-    'slug' => plugin_basename( __FILE__ ),
-]);
+new \Umich\GithubUpdater\Init(
+    array(
+        'repo' => 'its-cloudflare/umich-cloudflare',
+        'slug' => plugin_basename( __FILE__ ),
+    )
+);
 ```
 
 #### Create / Update your build process
@@ -75,19 +77,24 @@ When comparing version numbers, the library ignores any leadiing `v` or `V` in t
 
 * To upgrade the plugin to beta, rc, and stable releases that have higher version numbers than what is currently installed:
 ```php
-new \Umich\GithubUpdater\Init([
-    'repo'           => 'its-cloudflare/umich-cloudflare',
-    'slug'           => plugin_basename( __FILE__ ),
-    'match_releases' => 'includeBeta',
-]);
+new \Umich\GithubUpdater\Init(
+    array(
+        'repo'           => 'its-cloudflare/umich-cloudflare',
+        'slug'           => plugin_basename( __FILE__ ),
+        'match_releases' => 'includeBeta',
+    )
+);
 ```
 
 * To upgrade to any stable, RC, or beta release in the 3.x series, _without_ upgrading to new major releases (4.x and later):
 ```php
-new \Umich\GithubUpdater\Init([
-    'repo'           => 'its-cloudflare/umich-cloudflare',
-    'slug'           => plugin_basename( __FILE__ ),
-    'match_releases' => '/^v3\.[0-9.]+(-(beta|rc))?/i',
+new \Umich\GithubUpdater\Init(
+    array(
+        'repo'           => 'its-cloudflare/umich-cloudflare',
+        'slug'           => plugin_basename( __FILE__ ),
+        'match_releases' => '/^v3\.[0-9.]+(-(beta|rc))?/i',
+    )
+);
 ```
 If the plugin major version is already 3.x, an easier way to do the same thing is to use the `match_releases` value `includeBeta,pinMajor`
 
