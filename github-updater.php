@@ -164,7 +164,7 @@ namespace Umich\GithubUpdater\v1d1d0 {
 	                $pluginData = get_plugin_data( WP_PLUGIN_DIR .'/'. $this->_options['slug'] );
 
 	                if ( empty( $this->_options['match_releases'] )
-                         || $this->_options['match_releases'] != 'stable' ) {
+                         || $this->_options['match_releases'] == 'stable' ) {
                         $release = $this->_callAPI( 'releases/latest', 'gh_release_latest' );
                     } else {
                         $release = $this->_searchAllReleases( $pluginData );
