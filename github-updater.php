@@ -136,19 +136,14 @@ namespace Umich\GithubUpdater\v1d1d0 {
                         }
 
                         if( $release ) {
+                            $version = ltrim( $release->tag_name, 'vV' );
                             $update = [
                                 'slug'    => $this->_options['slug'],
-                                'version' => ltrim( $release->tag_name, 'vV' ),
+                                'version' => $version,
                                 'url'     => $this->_githubBase['main'] . $this->_options['repo'] .'/releases/tag/'
                                              . $release->tag_name,
-                                'package' => $release->zipball_url
+                                'package' => $this->_getDownloadLink( $release, $version ),
                             ];
-
-                            foreach( $release->assets as $asset ) {
-                                if( $asset->name == basename( $this->_options['repo'] ) ."-{$release->tag_name}.zip" ) {
-                                    $update['package'] = $asset->browser_download_url;
-                                }
-                            }
                         }
                     }
 
@@ -202,19 +197,12 @@ namespace Umich\GithubUpdater\v1d1d0 {
                                     $release->body
                                 ),
                             ],
-                            'download_link'  => $release->zipball_url, // zip file
+                            'download_link'  => $this->_getDownloadLink( $release, $version ), // zip file
                             'banners'        => [
                                 'low'  => '', // image link (750x250)
                                 'high' => '', // image link large (1500x500)
                             ]
                         ];
-
-                        foreach( $release->assets as $asset ) {
-                            if( $asset->name == basename( $this->_options['repo'] ) ."-{$release->tag_name}.zip"
-                                || $asset->name == basename( $this->_options['repo'] ) ."-{$version}.zip" ) {
-                                $return->download_link = $asset->browser_download_url;
-                            }
-                        }
 
                         if( $wpConfig ) {
                             foreach( array( 'requires', 'tested', 'requires_php', 'banners:low', 'banners:high' ) as $key ) {
@@ -254,6 +242,39 @@ namespace Umich\GithubUpdater\v1d1d0 {
 
                     return $result;
                 }, 10, 3 );
+            }
+
+            private function _getDownloadLink( $release, $version )
+            {
+                // if no assets, return the zipball url
+                if( !isset( $release->assets ) || !is_array( $release->assets ) || empty( $release->assets ) ) {
+                    return $release->zipball_url;
+                }
+
+                $base = basename( $this->_options['repo'] );
+
+                foreach( $release->assets as $asset ) {
+                    if( $asset->name == "{$base}-{$release->tag_name}.zip" ) {
+                        return $asset->browser_download_url;
+                    }
+                }
+
+                if ( $version == $release->tag_name ) {
+                    foreach( $release->assets as $asset ) {
+                        if( $asset->name == "{$base}-v{$version}.zip"
+                            || $asset->name == "{$base}-V{$version}.zip" ) {
+                            return $asset->browser_download_url;
+                        }
+                    }
+                } else {
+                    foreach( $release->assets as $asset ) {
+                        if( $asset->name == "{$base}-{$version}.zip" ) {
+                            return $asset->browser_download_url;
+                        }
+                    }
+                }
+
+                return $release->zipball_url;
             }
 
             private function _callAPI( $endpoint, $key = null, $method = 'GET', $data = null )
