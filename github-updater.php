@@ -274,6 +274,12 @@ namespace Umich\GithubUpdater\v1d1d0 {
                     }
                 }
 
+                foreach( $release->assets as $asset ) {
+                    if( $asset->name == "{$base}.zip" ) {
+                        return $asset->browser_download_url;
+                    }
+                }
+
                 return $release->zipball_url;
             }
 
