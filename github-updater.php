@@ -125,29 +125,12 @@ namespace Umich\GithubUpdater\v1d1d0 {
                 /** WORDPRESS HOOKS **/
                 // Update Check
                 add_filter( 'update_plugins_github.com', function( $update, $pluginData, $pluginFile ){
-                    if( $pluginFile == $this->_options['slug'] ) {
-                        // get latest release
-                        if ( empty( $this->_options['match_releases'] )
-                             || $this->_options['match_releases'] == 'stable' ) {
-                            $release = $this->_callAPI( 'releases/latest', 'gh_release_latest' );
-                        } else {
-                            $pluginData = get_plugin_data( WP_PLUGIN_DIR .'/'. $this->_options['slug'] );
-                            $release = $this->_searchAllReleases( $pluginData );
-                        }
-
-                        if( $release ) {
-                            $version = ltrim( $release->tag_name, 'vV' );
-                            $update = [
-                                'slug'    => $this->_options['slug'],
-                                'version' => $version,
-                                'url'     => $this->_githubBase['main'] . $this->_options['repo'] .'/releases/tag/'
-                                             . $release->tag_name,
-                                'package' => $this->_getDownloadLink( $release, $version ),
-                            ];
-                        }
+                    if( $pluginFile != $this->_options['slug'] ) {
+                        return $update;
                     }
 
-                    return $update;
+                    return $this->_getUpdateDetails() ?: $update;
+
                 }, 10, 3 );
 
                 // Plugin Details
@@ -156,76 +139,12 @@ namespace Umich\GithubUpdater\v1d1d0 {
                         return $return;
                     }
 
-	                $pluginData = get_plugin_data( WP_PLUGIN_DIR .'/'. $this->_options['slug'] );
-
-	                if ( empty( $this->_options['match_releases'] )
-                         || $this->_options['match_releases'] == 'stable' ) {
-                        $release = $this->_callAPI( 'releases/latest', 'gh_release_latest' );
-                    } else {
-                        $release = $this->_searchAllReleases( $pluginData );
+                    $details = $this->_getUpdateDetails();
+                    if ( is_array($details) && count( $details ) > 0 ) {
+                        return (object) $details;
                     }
-
-                    if( $release && $pluginData ) {
-                        if( ($wpConfig = $this->_getRaw( $this->_options['config'], $release->tag_name )) !== false ) {
-                            foreach( [ 'description', 'changelog' ] as $key ) {
-                                if( isset( $wpConfig->{$key} ) ) {
-                                    $this->_options[ $key ] = $wpConfig->{$key};
-                                }
-                            }
-                        }
-
-                        $version = ltrim( $release->tag_name, 'vV' );
-                        $return = (object) [
-                            'slug'           => $args->slug,
-                            'name'           => $pluginData['Name'],
-                            'version'        => $version,
-                            'requires'       => '',
-                            'tested'         => '',
-                            'requires_php'   => '',
-                            'last_updated'   => date( 'Y-m-d h:ia e', strtotime( $release->published_at ) ),
-                            'author'         => $pluginData['Author'],
-                            'homepage'       => $pluginData['PluginURI'],
-                            'sections'       => [ // as html
-                                'description' => $this->_getMarkdown(
-                                    $this->_options['description'],
-                                    $release->tag_name,
-                                    $pluginData['Description'] ?: $pluginData['Name']
-                                ),
-                                'changelog'   => $this->_getMarkdown(
-                                    $this->_options['changelog'],
-                                    $release->tag_name,
-                                    $release->body
-                                ),
-                            ],
-                            'download_link'  => $this->_getDownloadLink( $release, $version ), // zip file
-                            'banners'        => [
-                                'low'  => '', // image link (750x250)
-                                'high' => '', // image link large (1500x500)
-                            ]
-                        ];
-
-                        if( $wpConfig ) {
-                            foreach( array( 'requires', 'tested', 'requires_php', 'banners:low', 'banners:high' ) as $key ) {
-                                if( isset( $wpConfig->{$key} ) ) {
-                                    if( strpos( $key, ':' ) !== false ) {
-                                        $kParts = explode( ':', $key, 2 );
-                                        $return->{$kParts[0]}[ $kParts[1] ] = $wpConfig->{$key};
-                                    }
-                                    else {
-                                        $return->{$key} = $wpConfig->{$key};
-                                    }
-                                }
-                            }
-                        }
-
-                        foreach( $return->banners as $key => $img ) {
-                            if( strpos( $img, '/' ) === 0 ) {
-                                $return->banners[ $key ] = plugins_url( $img, dirname( __FILE__ ) );
-                            }
-                        }
-                    }
-
                     return $return;
+
                 }, 20, 3 );
 
                 // force directory name to stay the same
@@ -242,6 +161,86 @@ namespace Umich\GithubUpdater\v1d1d0 {
 
                     return $result;
                 }, 10, 3 );
+            }
+
+            private function _getUpdateDetails() {
+
+                $pluginData = get_plugin_data( WP_PLUGIN_DIR .'/'. $this->_options['slug'] );
+
+                if ( empty( $this->_options['match_releases'] )
+                     || $this->_options['match_releases'] == 'stable' ) {
+                    $release = $this->_callAPI( 'releases/latest', 'gh_release_latest' );
+                } else {
+                    $release = $this->_searchAllReleases( $pluginData );
+                }
+
+                if ( !$release || !$pluginData ) {
+                    return null;
+                }
+
+                if( ($wpConfig = $this->_getRaw( $this->_options['config'], $release->tag_name )) !== false ) {
+                    foreach( [ 'description', 'changelog' ] as $key ) {
+                        if( isset( $wpConfig->{$key} ) ) {
+                            $this->_options[ $key ] = $wpConfig->{$key};
+                        }
+                    }
+                }
+
+                $version = ltrim( $release->tag_name, 'vV' );
+                $downloadLink = $this->_getDownloadLink( $release, $version );
+                $details = [
+                    'slug'           => $args->slug,
+                    'name'           => $pluginData['Name'],
+                    'version'        => $version,
+                    'url'            => $this->_githubBase['main'] . $this->_options['repo'] .'/releases/tag/'
+                                        . $release->tag_name,  // used by update_plugins_github.com filter
+                    'requires'       => '',
+                    'tested'         => '',
+                    'requires_php'   => '',
+                    'last_updated'   => date( 'Y-m-d h:ia e', strtotime( $release->published_at ) ),
+                    'author'         => $pluginData['Author'],
+                    'homepage'       => $pluginData['PluginURI'],
+                    'sections'       => [ // as html
+                        'description' => $this->_getMarkdown(
+                            $this->_options['description'],
+                            $release->tag_name,
+                            $pluginData['Description'] ?: $pluginData['Name']
+                        ),
+                        'changelog'   => $this->_getMarkdown(
+                            $this->_options['changelog'],
+                            $release->tag_name,
+                            $release->body
+                        ),
+                    ],
+                    'download_link'  => $downloadLink, // used by plugins_api filter
+                    'package'        => $downloadLink, // used by update_plugins_github.com filter
+                    'banners'        => [
+                        'low'  => '', // image link (750x250)
+                        'high' => '', // image link large (1500x500)
+                    ]
+                ];
+
+                if( $wpConfig ) {
+                    foreach( array( 'requires', 'tested', 'requires_php', 'banners:low', 'banners:high' ) as $key ) {
+                        if( isset( $wpConfig->{$key} ) ) {
+                            if( strpos( $key, ':' ) !== false ) {
+                                $kParts = explode( ':', $key, 2 );
+                                $details[$kParts[0]][ $kParts[1] ] = $wpConfig->{$key};
+                            }
+                            else {
+                                $details[$key] = $wpConfig->{$key};
+                            }
+                        }
+                    }
+                }
+
+                foreach( $details->banners as $key => $img ) {
+                    if( strpos( $img, '/' ) === 0 ) {
+                        $details->banners[ $key ] = plugins_url( $img, dirname( __FILE__ ) );
+                    }
+                }
+
+                return $details;
             }
 
             private function _getDownloadLink( $release, $version )
