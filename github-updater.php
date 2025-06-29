@@ -189,7 +189,7 @@ namespace Umich\GithubUpdater\v1d1d0 {
                 $version = ltrim( $release->tag_name, 'vV' );
                 $downloadLink = $this->_getDownloadLink( $release, $version );
                 $details = [
-                    'slug'           => $args->slug,
+                    'slug'           => $this->_options['slug'],
                     'name'           => $pluginData['Name'],
                     'version'        => $version,
                     'url'            => $this->_githubBase['main'] . $this->_options['repo'] .'/releases/tag/'
@@ -234,9 +234,9 @@ namespace Umich\GithubUpdater\v1d1d0 {
                     }
                 }
 
-                foreach( $details->banners as $key => $img ) {
+                foreach( $details['banners'] as $key => $img ) {
                     if( strpos( $img, '/' ) === 0 ) {
-                        $details->banners[ $key ] = plugins_url( $img, dirname( __FILE__ ) );
+                        $details['banners'][ $key ] = plugins_url( $img, dirname( __FILE__ ) );
                     }
                 }
 
